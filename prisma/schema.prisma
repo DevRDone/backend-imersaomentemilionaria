@@ -1,0 +1,69 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./leads.db"
+}
+
+model Lead {
+  id            String   @id @default(cuid())
+  nome          String
+  email         String   @unique
+  telefone      String
+  origem        String?  @default("website")
+  status        String   @default("novo") // novo, contatado, interessado, convertido, descartado
+  
+  // UTM Parameters
+  utmSource     String?  @map("utm_source")
+  utmMedium     String?  @map("utm_medium")
+  utmCampaign   String?  @map("utm_campaign")
+  utmContent    String?  @map("utm_content")
+  utmTerm       String?  @map("utm_term")
+  
+  // Metadata
+  ip            String?
+  userAgent     String?  @map("user_agent")
+  referer       String?
+  
+  // Timestamps
+  dataCaptura     DateTime @default(now()) @map("data_captura")
+  dataAtualizacao DateTime @updatedAt @map("data_atualizacao")
+  
+  // Relacionamentos futuros (opcional)
+  // conversoes Conversao[]
+  // interacoes Interacao[]
+  
+  @@map("leads")
+}
+
+// Modelo opcional para conversões
+model Conversao {
+  id          String   @id @default(cuid())
+  leadId      String   @map("lead_id")
+  tipo        String   // "compra", "agendamento", "download", etc.
+  valor       Float?   // valor da conversão se houver
+  descricao   String?
+  dataConversao DateTime @default(now()) @map("data_conversao")
+  
+  // lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  
+  @@map("conversoes")
+}
+
+// Modelo opcional para interações
+model Interacao {
+  id          String   @id @default(cuid())
+  leadId      String   @map("lead_id")
+  tipo        String   // "email_enviado", "whatsapp", "ligacao", etc.
+  conteudo    String?
+  dataInteracao DateTime @default(now()) @map("data_interacao")
+  
+  // lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  
+  @@map("interacoes")
+}
