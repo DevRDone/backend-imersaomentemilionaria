@@ -201,7 +201,7 @@ app.get('/api/leads', async (req, res) => {
     const { key, page = 1, limit = 20, status, search, origem } = req.query;
     
     // Verificar autenticação
-    if (key !== process.env.API_KEY && key !== 'mente-milionaria-2024') {
+    if (key !== process.env.API_KEY) {
       return res.status(401).json({
         success: false,
         message: 'Acesso não autorizado',
@@ -284,7 +284,7 @@ app.get('/api/leads/:id', async (req, res) => {
     const { id } = req.params;
     const { key } = req.query;
     
-    if (key !== process.env.API_KEY && key !== 'mente-milionaria-2024') {
+    if (key !== process.env.API_KEY) {
       return res.status(401).json({
         success: false,
         message: 'Acesso não autorizado',
@@ -330,7 +330,7 @@ app.patch('/api/leads/:id/status', async (req, res) => {
     const { key } = req.query;
     const { status } = req.body;
     
-    if (key !== process.env.API_KEY && key !== 'mente-milionaria-2024') {
+    if (key !== process.env.API_KEY) {
       return res.status(401).json({
         success: false,
         message: 'Acesso não autorizado',
@@ -381,7 +381,7 @@ app.get('/api/stats', async (req, res) => {
   try {
     const { key } = req.query;
     
-    if (key !== process.env.API_KEY && key !== 'mente-milionaria-2024') {
+    if (key !== process.env.API_KEY) {
       return res.status(401).json({
         success: false,
         message: 'Acesso não autorizado',
@@ -497,7 +497,7 @@ app.post('/api/leads/:leadId/conversao', async (req, res) => {
     const { key } = req.query;
     const { tipo, valor, descricao } = req.body;
     
-    if (key !== process.env.API_KEY && key !== 'mente-milionaria-2024') {
+    if (key !== process.env.API_KEY) {
       return res.status(401).json({
         success: false,
         message: 'Acesso não autorizado',
@@ -555,8 +555,8 @@ app.listen(PORT, () => {
   console.log(`🚀 API Mente Milionária rodando na porta ${PORT}`);
   console.log(`📍 Health Check: http://localhost:${PORT}/health`);
   console.log(`📋 Capturar lead: POST http://localhost:${PORT}/api/leads`);
-  console.log(`📊 Listar leads: GET http://localhost:${PORT}/api/leads?key=mente-milionaria-2024`);
-  console.log(`📈 Estatísticas: GET http://localhost:${PORT}/api/stats?key=mente-milionaria-2024`);
+  console.log(`📊 Listar leads: GET http://localhost:${PORT}/api/leads?key=${process.env.API_KEY || 'SUA_API_KEY'}`);
+  console.log(`📈 Estatísticas: GET http://localhost:${PORT}/api/stats?key=${process.env.API_KEY || 'SUA_API_KEY'}`);
   console.log(`💾 Banco: SQLite (leads.db)`);
 });
 
