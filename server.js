@@ -11,8 +11,14 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Trust proxy para obter IP real
-app.set('trust proxy', true);
+// Configuração segura de proxy com whitelist de IPs confiáveis
+// Apenas IPs específicos são confiáveis para fornecer o IP real do cliente
+// Lista de IPs confiáveis (pode incluir IPs específicos ou CIDRs)
+const TRUSTED_PROXIES = process.env.TRUSTED_PROXIES ? 
+  process.env.TRUSTED_PROXIES.split(',') : 
+  ['loopback', '127.0.0.1', '::1']; // Por padrão, apenas localhost
+
+app.set('trust proxy', TRUSTED_PROXIES);
 
 // Validações
 function isValidEmail(email) {
@@ -41,9 +47,25 @@ function sanitizeInput(str) {
   return str.trim().replace(/[<>]/g, '');
 }
 
-// Middleware para log
+// Função para validar e obter o IP real do cliente de forma segura
+function getClientIp(req) {
+  // Se o request veio de um proxy confiável, use o cabeçalho X-Forwarded-For
+  if (req.ips && req.ips.length > 0) {
+    // O primeiro IP no array ips é o IP do cliente original quando usar proxies confiáveis
+    return req.ips[0];
+  }
+  
+  // Se não vier de um proxy ou o proxy não estiver na whitelist, use o IP direto
+  return req.ip || req.connection.remoteAddress || 'unknown';
+}
+
+// Middleware para log com IP validado
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - IP: ${req.ip}`);
+  const clientIp = getClientIp(req);
+  // Adiciona o IP validado ao objeto request para uso posterior
+  req.clientIp = clientIp;
+  
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - IP: ${clientIp} - Original IP: ${req.ip}`);
   next();
 });
 
@@ -154,7 +176,7 @@ app.post('/api/leads', async (req, res) => {
         utmCampaign: utm_campaign || null,
         utmContent: utm_content || null,
         utmTerm: utm_term || null,
-        ip: req.ip,
+        ip: req.clientIp, // Usando o IP validado pelo middleware
         userAgent: userAgent,
         referer: referer,
         status: 'novo'
