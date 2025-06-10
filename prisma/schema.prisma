@@ -6,8 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./leads.db"
+  provider = "postgresql"  // Mudou de sqlite
+  url      = env("DATABASE_URL")
 }
 
 model Lead {
