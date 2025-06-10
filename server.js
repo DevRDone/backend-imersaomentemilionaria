@@ -3,15 +3,26 @@ import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3000; // ✅ Mudou de 8080 para 3000
 const prisma = new PrismaClient();
 
-// Middleware
-app.use(cors());
+// ✅ CORS configurado para produção
+app.use(cors({
+  origin: [
+    'http://localhost:5173', // Desenvolvimento
+    'https://imersaomentemilionaria.com', // Seu domínio
+    'https://*.vercel.app', // Se usar Vercel
+    'https://*.netlify.app' // Se usar Netlify
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Trust proxy para obter IP real
+// Trust proxy para Railway
 app.set('trust proxy', true);
 
 // Validações
@@ -35,7 +46,6 @@ function isValidPhone(phone) {
   return cleanPhone.length >= 10 && cleanPhone.length <= 11;
 }
 
-
 function sanitizeInput(str) {
   if (typeof str !== 'string') return str;
   return str.trim().replace(/[<>]/g, '');
@@ -57,13 +67,16 @@ app.get('/health', async (req, res) => {
       success: true,
       message: 'API funcionando e banco conectado!',
       timestamp: new Date().toISOString(),
-      database: 'connected'
+      database: 'connected',
+      environment: process.env.NODE_ENV || 'development'
     });
   } catch (error) {
+    console.error('❌ Erro no health check:', error);
     res.status(500).json({
       success: false,
       message: 'Erro na conexão com banco',
-      database: 'disconnected'
+      database: 'disconnected',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal error'
     });
   }
 });
@@ -293,11 +306,7 @@ app.get('/api/leads/:id', async (req, res) => {
     }
 
     const lead = await prisma.lead.findUnique({
-      where: { id },
-      include: {
-        // conversoes: true,
-        // interacoes: true
-      }
+      where: { id }
     });
 
     if (!lead) {
@@ -545,19 +554,28 @@ app.use((req, res) => {
   });
 });
 
+// ✅ Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('🔄 Fechando conexão com banco...');
   await prisma.$disconnect();
   process.exit(0);
 });
 
-app.listen(PORT, () => {
+process.on('SIGTERM', async () => {
+  console.log('🔄 Fechando conexão com banco...');
+  await prisma.$disconnect();
+  process.exit(0);
+});
+
+// ✅ Listen corrigido para Railway
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 API Mente Milionária rodando na porta ${PORT}`);
-  console.log(`📍 Health Check: http://localhost:${PORT}/health`);
-  console.log(`📋 Capturar lead: POST http://localhost:${PORT}/api/leads`);
-  console.log(`📊 Listar leads: GET http://localhost:${PORT}/api/leads?key=mente-milionaria-2024`);
-  console.log(`📈 Estatísticas: GET http://localhost:${PORT}/api/stats?key=mente-milionaria-2024`);
-  console.log(`💾 Banco: SQLite (leads.db)`);
+  console.log(`📍 Health Check: /health`);
+  console.log(`📋 Capturar lead: POST /api/leads`);
+  console.log(`📊 Listar leads: GET /api/leads?key=mente-milionaria-2024`);
+  console.log(`📈 Estatísticas: GET /api/stats?key=mente-milionaria-2024`);
+  console.log(`💾 Banco: PostgreSQL`);
+  console.log(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
 });
 
 export default app;
