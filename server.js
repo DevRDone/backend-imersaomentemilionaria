@@ -41,6 +41,38 @@ function sanitizeInput(str) {
   return str.trim().replace(/[<>]/g, '');
 }
 
+// Utility function to mask sensitive data for logging
+function maskSensitiveData(data, type) {
+  if (!data) return '';
+  
+  switch(type) {
+    case 'email':
+      // Format: f***@d***.com (first letter + *** @ first letter of domain + ***)
+      const [username, domain] = data.split('@');
+      if (!username || !domain) return '***@***.***';
+      
+      const domainParts = domain.split('.');
+      const maskedDomain = domainParts.length > 1 
+        ? `${domain[0]}***${domainParts.length > 1 ? '.' + domainParts[domainParts.length - 1] : ''}`
+        : `${domain[0]}***`;
+        
+      return `${username[0]}***@${maskedDomain}`;
+      
+    case 'name':
+      // Format: First letter of name + *** (e.g., "João Silva" becomes "J***")
+      return data[0] + '***';
+      
+    case 'phone':
+      // Format: Last 4 digits visible, rest masked (e.g., "***-***-1234")
+      const cleanPhone = data.replace(/\D/g, '');
+      const lastFourDigits = cleanPhone.slice(-4);
+      return `***-***-${lastFourDigits}`;
+      
+    default:
+      return '***';
+  }
+}
+
 // Middleware para log
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - IP: ${req.ip}`);
@@ -161,7 +193,7 @@ app.post('/api/leads', async (req, res) => {
       }
     });
 
-    console.log(`✅ Novo lead criado: ${newLead.email} - ${newLead.nome}`);
+    console.log(`✅ Novo lead criado: ${maskSensitiveData(newLead.email, 'email')} - ${maskSensitiveData(newLead.nome, 'name')} (ID: ${newLead.id})`);
 
     // Resposta sem dados sensíveis
     res.status(201).json({
@@ -176,7 +208,12 @@ app.post('/api/leads', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Erro ao capturar lead:', error);
+    // Remove any potential sensitive data from the error object
+    const safeError = { ...error };
+    if (safeError.meta?.target?.includes('email')) {
+      safeError.meta = { ...safeError.meta, target: 'email' }; 
+    }
+    console.error('❌ Erro ao capturar lead:', safeError);
     
     // Tratamento de erros específicos do Prisma
     if (error.code === 'P2002') {
@@ -269,7 +306,7 @@ app.get('/api/leads', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Erro ao buscar leads:', error);
+    console.error('❌ Erro ao buscar leads:', { code: error.code, message: error.message });
     res.status(500).json({
       success: false,
       message: 'Erro interno do servidor',
@@ -314,7 +351,7 @@ app.get('/api/leads/:id', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Erro ao buscar lead:', error);
+    console.error('❌ Erro ao buscar lead:', { code: error.code, message: error.message });
     res.status(500).json({
       success: false,
       message: 'Erro interno do servidor',
@@ -367,7 +404,7 @@ app.patch('/api/leads/:id/status', async (req, res) => {
       });
     }
 
-    console.error('❌ Erro ao atualizar lead:', error);
+    console.error('❌ Erro ao atualizar lead:', { code: error.code, message: error.message });
     res.status(500).json({
       success: false,
       message: 'Erro interno do servidor',
@@ -481,7 +518,7 @@ app.get('/api/stats', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Erro ao buscar estatísticas:', error);
+    console.error('❌ Erro ao buscar estatísticas:', { code: error.code, message: error.message });
     res.status(500).json({
       success: false,
       message: 'Erro interno do servidor',
@@ -527,7 +564,7 @@ app.post('/api/leads/:leadId/conversao', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Erro ao registrar conversão:', error);
+    console.error('❌ Erro ao registrar conversão:', { code: error.code, message: error.message });
     res.status(500).json({
       success: false,
       message: 'Erro interno do servidor',
