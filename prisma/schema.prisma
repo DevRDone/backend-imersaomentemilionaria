@@ -13,7 +13,7 @@ datasource db {
 model Lead {
   id            String   @id @default(cuid())
   nome          String
-  email         String   
+  email         String   @unique
   telefone      String
   origem        String?  @default("website")
   status        String   @default("novo") // novo, contatado, interessado, convertido, descartado
